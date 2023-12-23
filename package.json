@@ -1,0 +1,28 @@
+{
+  "name": "sitemap-manager",
+  "version": "1.0.0",
+  "description": "Module for managing a project sitemap",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/encephalux/sitemap-manager.git"
+  },
+  "keywords": [
+    "sitemap",
+    "manager",
+    "sitemap-manager"
+  ],
+  "author": "encephalux",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/encephalux/sitemap-manager/issues"
+  },
+  "homepage": "https://github.com/encephalux/sitemap-manager#readme",
+  "dependencies": {
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.6"
+  }
+}
