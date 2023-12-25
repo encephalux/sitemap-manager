@@ -58,7 +58,8 @@ const init = async () => {
             _parts_count bigint not null default 0,
             _size bigint not null default 0,
             _map_type varchar(3) check (_map_type in ('txt', 'xml')) not null,
-            _inserted_at datetime not null
+            _inserted_at datetime not null default datetime(),
+            _updated_at datetime not null default datetime()
         )
     `);
 };
