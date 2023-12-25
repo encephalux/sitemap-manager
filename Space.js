@@ -107,12 +107,16 @@ class Space {
         await this.db.run(`insert into t_parts(_number) values (?)`, [number]);
         await shared.main_db.run(`update t_spaces set _parts_count = _parts_count + 1, _updated_at = datetime() where _key = ?`, [this._key]);
 
+        if(number > 1) await this.gen_index();
+
         return number;
     }
 
     part_item(_url) {
         return "";
     }
+
+    async gen_index() {}
 
     static async register({
         _key,
