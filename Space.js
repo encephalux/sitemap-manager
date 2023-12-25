@@ -13,6 +13,7 @@ class Space {
         _parts_count = 0,
         _size = 0,
         _inserted_at = null,
+        _updated_at = null,
         _db = null
     }) {
         check_loaded();
@@ -25,6 +26,7 @@ class Space {
         this._size = _size;
         this._map_type = _map_type;
         this._inserted_at = _inserted_at;
+        this._updated_at = _updated_at;
         this.dir = path.join(env.STORAGE, this._key);
         this.db_path = path.join(this.dir, `${_key}.db`);
         this.db = _db;
