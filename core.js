@@ -52,14 +52,14 @@ const init = async () => {
     await shared.main_db.run(`
         create table t_spaces (
             _key varchar(255) not null primary key,
-            _domain_name varchar(255) not null unique,
-            _url_root text not null default '',
+            _domain_name varchar(255) not null,
+            _root_url text not null default '' unique,
             _urls_count bigint not null default 0,
             _parts_count bigint not null default 0,
             _size bigint not null default 0,
-            _map_type varchar(3) check (_map_type in ('txt', 'xml')) not null,
-            _inserted_at datetime not null default datetime(),
-            _updated_at datetime not null default datetime()
+            _map_type varchar(3) check(_map_type in ('txt', 'xml')) not null,
+            _inserted_at datetime not null default (datetime('now')),
+            _updated_at datetime not null default (datetime('now'))
         )
     `);
 };

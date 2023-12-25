@@ -1,79 +1,132 @@
+const path = require("path");
+const fs_p = require("fs/promises");
+const Queue = require("./Queue");
 const {check_loaded} = require("./core");
 const Space = require("./Space");
+const env = require("./env");
 
 class TxtSpace extends Space {
+    queue = new Queue();
 
-    async register_url({
-        _url,
-        _lastmod,
-        _change_freq,
-        _priority = 0.0,
-        _part = null,
-        _size = Buffer.from(this.part_item(_url)).length
-    }) {
+    async register_url(_url) {
         check_loaded();
 
-        await super.register_url({
-            _url,
-            _lastmod,
-            _change_freq,
-            _priority,
-            _part,
-            _size
+        const part_item = this.part_item(_url);
+        const size = Buffer.from(part_item).length;
+
+        const result = await this.db.get(`select _number from t_parts where _urls_count <= $urls_count_limit and (_size + $item_size) <= $size_limit`, {
+            '$urls_count_limit': env.LIMITS.URL_COUNT,
+            '$size_limit': env.LIMITS.FILE_SIZE,
+            '$item_size': size
         });
+
+        const part = result ? result._number : await this.init_part();
+
+        await super.register_url({
+            _url: _url,
+            _part: part,
+            _size: size
+        });
+
+        await fs_p.writeFile(path.join(this.dir, `sitemap-${part}.txt`), part_item, {flag: "a"});
     }
 
     async update_url({
         _url,
-        _new_url,
-        _lastmod,
-        _change_freq,
-        _priority,
-        _part,
-        _size = Buffer.from(this.part_item(_url)).length,
-        _new_size
+        _new_url
     }) {
+        if(!_new_url || _new_url === _url) return;
+
         check_loaded();
+
+        const {_part: part} = await this.db.get(`select _part from t_urls where _url = ?`, [_url]);
+
+        await this.#part_process({
+            _part: part,
+            _processor: (_obj) => _obj._tmp_fd.write(this.part_item(_obj._url === _url ? _new_url : _obj._url))
+        });
 
         await super.update_url({
             _url,
             _new_url,
-            _lastmod,
-            _change_freq,
-            _priority,
-            _part,
-            _size,
-            _new_size
+            _part: part
         });
     }
 
     async delete_url({_url, _size = Buffer.from(this.part_item(_url)).length}) {
         check_loaded();
+
+        const {_part: part} = await this.db.get(`select _part from t_urls where _url = ?`, [_url]);
+
+        await this.#part_process({
+            _part: part,
+            _processor: async (_obj) => {
+                if(_obj._url === _url) return;
+
+                await _obj._tmp_fd.write(this.part_item(_obj._url));
+            }
+        });
+
+        await super.delete_url({_url, _part: part});
     }
 
     async init_part() {
         check_loaded();
 
-        await super.init_part();
+        return this.queue.enqueue(async () => {
+            const number = await super.init_part();
+            await fs_p.writeFile(path.join(this.dir, `sitemap-${number}.txt`), "");
+
+            return number;
+        });
     }
 
     part_item(_url = "") {
-        return _url;
+        return _url + "\n";
+    }
+
+    #part_process({_part, _processor = async ({_url, _old_fd, _tmp_fd}) => null}) {
+
+        return this.queue.enqueue(async () => {
+
+            const sitemap_path = path.join(this.dir, `sitemap-${_part}.txt`);
+            const tmp_path = path.join(this.dir, `sitemap-${_part}.txt.tmp`);
+
+            const old_fd = await fs_p.open(sitemap_path, "r");
+            const tmp_fd = await fs_p.open(tmp_path, "w");
+
+            for await(const url of old_fd.readLines()) {
+                await _processor({
+                    _url: url,
+                    _old_fd: old_fd,
+                    _tmp_fd: tmp_fd
+                });
+            }
+
+            await old_fd?.close();
+            await tmp_fd?.close();
+
+            await fs_p.rename(tmp_path, sitemap_path);
+        });
     }
 
     static async register({
         _key,
         _domain_name,
-        _url_root
+        _root_url
     }) {
         check_loaded();
 
-        return new TxtSpace(await super.register({
+        const space =  new TxtSpace(await super.register({
             _key,
             _domain_name,
-            _url_root,
+            _root_url,
             _map_type: "txt"
         }));
+
+        await space.register_url(_root_url);
+
+        return space;
     }
 
     static async load(_key) {
