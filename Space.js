@@ -158,22 +158,22 @@ class Space {
             )
         `);
 
-        return new Space({
+        return {
             _key,
             _domain_name,
             _url_root,
             _map_type,
             _inserted_at: insert_date,
             _db: space_db
-        });
+        };
     }
 
     static async load(_key) {
 
-        return new Space({
+        return {
             ...(await shared.main_db.all(`select * from t_spaces where _key = ?`, [_key]))[0],
             _db: await open_db(path.join(env.STORAGE, _key, `${_key}.db`))
-        });
+        };
     }
 }
 
